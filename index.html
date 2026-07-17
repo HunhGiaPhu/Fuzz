@@ -242,6 +242,84 @@
   .link-name { font-weight: 700; font-size: 14px; }
   .link-desc { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .link-arrow { color: var(--muted); font-size: 16px; }
+
+  .music-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+  .music-toggle:hover { background: rgba(255,255,255,0.14); transform: scale(1.06); }
+  .music-toggle svg { width: 20px; height: 20px; color: var(--text); }
+
+  .volume-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 76px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .volume-panel.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
+  .volume-panel input[type="range"] {
+    -webkit-appearance: none;
+    width: 90px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.2);
+    outline: none;
+    cursor: pointer;
+  }
+  .volume-panel input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .volume-panel input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+  }
+
+  #yt-player-wrap {
+    position: fixed;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -249,6 +327,23 @@
 <img src="background.gif" id="bg-image" alt="">
 <div id="bg-overlay"></div>
 <canvas id="bg-canvas"></canvas>
+
+<div id="yt-player-wrap"><div id="yt-player"></div></div>
+
+<div class="volume-panel" id="volume-panel">
+  <input type="range" id="volume-slider" min="0" max="100" value="50">
+</div>
+
+<div class="music-toggle" id="music-toggle" title="Bật/tắt nhạc nền">
+  <svg id="music-icon-on" viewBox="0 0 24 24" fill="currentColor" style="display:none;">
+    <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
+  </svg>
+  <svg id="music-icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z" fill="currentColor" stroke="none" opacity="0.4"/>
+    <line x1="3" y1="3" x2="21" y2="21"/>
+  </svg>
+</div>
+
 
 <div class="page">
   <div class="card">
@@ -434,6 +529,83 @@
 
   init();
   draw();
+})();
+</script>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+(function() {
+  var ytPlayer, isReady = false, userWantsPlay = true;
+  var toggleBtn = document.getElementById('music-toggle');
+  var iconOn = document.getElementById('music-icon-on');
+  var iconOff = document.getElementById('music-icon-off');
+  var volumePanel = document.getElementById('volume-panel');
+  var volumeSlider = document.getElementById('volume-slider');
+
+  function updateIcon(playing) {
+    iconOn.style.display = playing ? 'block' : 'none';
+    iconOff.style.display = playing ? 'none' : 'block';
+  }
+  updateIcon(false);
+
+  window.onYouTubeIframeAPIReady = function() {
+    ytPlayer = new YT.Player('yt-player', {
+      height: '1',
+      width: '1',
+      videoId: 'YqlLjeM0l_4',
+      playerVars: { autoplay: 1, controls: 0, loop: 1, playlist: 'YqlLjeM0l_4' },
+      events: {
+        onReady: function(e) {
+          isReady = true;
+          e.target.setVolume(Number(volumeSlider.value));
+          e.target.playVideo();
+        },
+        onStateChange: function(e) {
+          updateIcon(e.data === YT.PlayerState.PLAYING);
+        }
+      }
+    });
+  };
+
+  // Fallback: browsers often block autoplay with sound until first interaction
+  function tryPlayOnInteraction() {
+    if (isReady && userWantsPlay) {
+      ytPlayer.playVideo();
+    }
+    document.removeEventListener('click', tryPlayOnInteraction);
+    document.removeEventListener('touchstart', tryPlayOnInteraction);
+  }
+  document.addEventListener('click', tryPlayOnInteraction);
+  document.addEventListener('touchstart', tryPlayOnInteraction);
+
+  toggleBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (!isReady) return;
+    var state = ytPlayer.getPlayerState();
+    if (state === YT.PlayerState.PLAYING) {
+      ytPlayer.pauseVideo();
+      userWantsPlay = false;
+    } else {
+      ytPlayer.playVideo();
+      userWantsPlay = true;
+    }
+  });
+
+  // Show volume panel on hover / tap of the music button
+  toggleBtn.addEventListener('mouseenter', function() { volumePanel.classList.add('show'); });
+  toggleBtn.addEventListener('mouseleave', function() {
+    setTimeout(function() {
+      if (!volumePanel.matches(':hover')) volumePanel.classList.remove('show');
+    }, 150);
+  });
+  volumePanel.addEventListener('mouseleave', function() { volumePanel.classList.remove('show'); });
+
+  volumeSlider.addEventListener('input', function(e) {
+    e.stopPropagation();
+    var vol = Number(volumeSlider.value);
+    if (isReady) ytPlayer.setVolume(vol);
+  });
+  volumeSlider.addEventListener('click', function(e) { e.stopPropagation(); });
 })();
 </script>
 
