@@ -312,6 +312,57 @@
     cursor: pointer;
   }
 
+  .bio::after {
+    content: '';
+    display: inline-block;
+    width: 2px;
+    height: 14px;
+    background: var(--accent);
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 0.9s step-end infinite;
+  }
+  .bio.done::after { display: none; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .quote-box {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    backdrop-filter: blur(10px);
+    text-align: center;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .quote-mark {
+    color: var(--accent);
+    font-weight: 700;
+    font-style: normal;
+  }
+
+  .copy-toast {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(10px);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    z-index: 200;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+  }
+  .copy-toast.show { opacity: 1; transform: translateY(0); }
+
   #yt-player-wrap {
     position: fixed;
     width: 1px;
@@ -344,6 +395,8 @@
   </svg>
 </div>
 
+<div class="copy-toast" id="copy-toast">Đã copy Discord!</div>
+
 
 <div class="page">
   <div class="card">
@@ -365,7 +418,7 @@
         <span class="badge badge-new">=(</span>
       </div>
 
-      <div class="bio">Let It Happens</div>
+      <div class="bio" id="bio-text"></div>
 
       <div class="stats">
         <div class="stat">
@@ -414,7 +467,7 @@
       <span class="link-arrow">→</span>
     </a>
 
-    <a href="#" class="link-item">
+    <div class="link-item" id="discord-copy" style="cursor:pointer;">
       <div class="link-icon ic-discord">
         <svg viewBox="0 0 24 24" fill="currentColor">
           <path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.076.076 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.955 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
@@ -422,10 +475,10 @@
       </div>
       <div class="link-text">
         <div class="link-name">Discord</div>
-        <div class="link-desc">hynhgafuz</div>
+        <div class="link-desc" id="discord-desc">hynhgafuz</div>
       </div>
-      <span class="link-arrow">→</span>
-    </a>
+      <span class="link-arrow" id="discord-arrow">→</span>
+    </div>
 
     <a href="https://www.instagram.com/ngyndafuzz/" class="link-item" target="_blank" rel="noopener">
       <div class="link-icon ic-instagram">
@@ -478,6 +531,12 @@
       </div>
       <span class="link-arrow">→</span>
     </a>
+
+    <div class="quote-box" id="quote-box">
+      <span class="quote-mark">“</span>
+      <span id="quote-text"></span>
+      <span class="quote-mark">”</span>
+    </div>
 
   </div>
 </div>
@@ -606,6 +665,73 @@
     if (isReady) ytPlayer.setVolume(vol);
   });
   volumeSlider.addEventListener('click', function(e) { e.stopPropagation(); });
+})();
+</script>
+
+<script>
+(function() {
+  // Typing effect for bio
+  var bioEl = document.getElementById('bio-text');
+  var bioText = 'Let It Happens';
+  var i = 0;
+  function typeBio() {
+    if (i <= bioText.length) {
+      bioEl.textContent = bioText.slice(0, i);
+      i++;
+      setTimeout(typeBio, 90);
+    } else {
+      bioEl.classList.add('done');
+    }
+  }
+  typeBio();
+})();
+
+(function() {
+  // Copy Discord username to clipboard
+  var discordBtn = document.getElementById('discord-copy');
+  var toast = document.getElementById('copy-toast');
+  var discordUsername = 'hynhgafuz';
+  var toastTimer;
+
+  discordBtn.addEventListener('click', function() {
+    navigator.clipboard.writeText(discordUsername).then(function() {
+      showToast();
+    }).catch(function() {
+      // Fallback for older browsers
+      var temp = document.createElement('textarea');
+      temp.value = discordUsername;
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand('copy');
+      document.body.removeChild(temp);
+      showToast();
+    });
+  });
+
+  function showToast() {
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      toast.classList.remove('show');
+    }, 1800);
+  }
+})();
+
+(function() {
+  // Random quote on each visit
+  var quotes = [
+    'Có những thứ càng cố giữ càng dễ mất.',
+    'Mệt thì nghỉ một chút, không sao cả.',
+    'Không phải cố gắng nào cũng có kết quả, nhưng vẫn phải cố.',
+    'Người muốn ở lại sẽ tự tìm cách, người muốn đi sẽ tự tìm lý do.',
+    'Có những đêm chỉ cần yên tĩnh là đủ.',
+    'Rồi mọi chuyện cũng sẽ nhẹ đi theo thời gian.',
+    'Không phải im lặng là không buồn, chỉ là không muốn nói.',
+    'Cứ để nó xảy ra, rồi mọi thứ sẽ ổn thôi.'
+  ];
+  var quoteEl = document.getElementById('quote-text');
+  var pick = quotes[Math.floor(Math.random() * quotes.length)];
+  quoteEl.textContent = pick;
 })();
 </script>
 
